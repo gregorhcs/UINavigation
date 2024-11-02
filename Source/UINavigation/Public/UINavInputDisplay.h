@@ -58,8 +58,11 @@ public:
 
 protected:
 
-	UPROPERTY(EditAnywhere, Category = "InputDisplay")
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "InputDisplay")
 	UInputAction* InputAction = nullptr;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "InputDisplay")
+	uint8 MappingIndex = 0;
 
 	UPROPERTY(EditAnywhere, Category = "InputDisplay")
 	EInputAxis Axis = EInputAxis::X;

@@ -1172,6 +1172,83 @@ FKey UUINavPCComponent::GetEnhancedInputKey(const UInputAction* Action, const EI
 	return FKey();
 }
 
+TArray<FKey> UUINavPCComponent::GetEnhancedInputKeysWithAxis(const UInputAction* Action, const EInputAxis Axis,
+	const EAxisType Scale, const EInputRestriction InputRestriction) const
+{
+	TArray<FKey> Keys;
+	if (UUINavBlueprintFunctionLibrary::IsUINavInputAction(Action))
+	{
+		const UInputMappingContext* const UINavInputContext = GetDefault<UUINavSettings>()->EnhancedInputContext.LoadSynchronous();
+		for (const FEnhancedActionKeyMapping& Mapping : UINavInputContext->GetMappings())
+		{
+			if (Mapping.Action == Action && UUINavBlueprintFunctionLibrary::RespectsRestriction(Mapping.Key, InputRestriction))
+			{
+				if (Action->ValueType == EInputActionValueType::Boolean || Scale == EAxisType::None)
+				{
+					Keys.Add(Mapping.Key);
+				}
+				else
+				{
+					Keys.Add(GetKeyFromAxis(Mapping.Key, Scale == EAxisType::Positive, Axis));
+				}
+			}
+		}
+		return Keys;
+	}
+	else if (const UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+	{
+		const TArray<FKey> ActionKeys = Subsystem->QueryKeysMappedToAction(Action);
+		for (const FKey& Key : ActionKeys)
+		{
+			if (UUINavBlueprintFunctionLibrary::RespectsRestriction(Key, InputRestriction))
+			{
+				if (Action->ValueType == EInputActionValueType::Boolean || Scale == EAxisType::None)
+				{
+					Keys.Add(Key);
+				}
+				else
+				{
+					Keys.Add(GetKeyFromAxis(Key, Scale == EAxisType::Positive, Axis));
+				}
+			}
+		}
+		return Keys;
+	}
+
+	for (const UInputMappingContext* const InputContext : CachedInputContexts)
+	{
+		for (const FEnhancedActionKeyMapping& Mapping : InputContext->GetMappings())
+		{
+			if (Mapping.Action == Action && UUINavBlueprintFunctionLibrary::RespectsRestriction(Mapping.Key, InputRestriction))
+			{
+				if (Action->ValueType == EInputActionValueType::Boolean || Scale == EAxisType::None)
+				{
+					Keys.Add(Mapping.Key);
+				}
+				else
+				{
+					if (IsAxis(Mapping.Key))
+					{
+						Keys.Add(GetKeyFromAxis(Mapping.Key, Scale == EAxisType::Positive, Axis));
+					}
+					else
+					{
+						bool bPositive;
+						EInputAxis KeyAxis;
+						GetAxisPropertiesFromMapping(Mapping, bPositive, KeyAxis);
+						if (KeyAxis == Axis && bPositive == (Scale == EAxisType::Positive))
+						{
+							Keys.Add(Mapping.Key);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return Keys;
+}
+
 UTexture2D* UUINavPCComponent::GetKeyIcon(const FKey Key) const
 {
 	TSoftObjectPtr<UTexture2D> SoftKeyIcon = GetSoftKeyIcon(Key);
@@ -1205,9 +1282,33 @@ UTexture2D* UUINavPCComponent::GetEnhancedInputIcon(const UInputAction* Action, 
 	return GetKeyIcon(GetEnhancedInputKey(Action, Axis, Scale, InputRestriction));
 }
 
+TArray<TSoftObjectPtr<UTexture2D>> UUINavPCComponent::GetEnhancedInputIcons(const UInputAction* Action, const EInputAxis Axis,
+	const EAxisType Scale, const EInputRestriction InputRestriction) const
+{
+	TArray<FKey> Keys = GetEnhancedInputKeysWithAxis(Action, Axis, Scale, InputRestriction);
+	TArray<TSoftObjectPtr<UTexture2D>> Textures;
+	for (const FKey& Key : Keys)
+	{
+		Textures.Add(GetKeyIcon(Key));
+	}
+	return Textures;
+}
+
 TSoftObjectPtr<UTexture2D> UUINavPCComponent::GetSoftEnhancedInputIcon(const UInputAction* Action, const EInputAxis Axis, const EAxisType Scale, const EInputRestriction InputRestriction) const
 {
 	return GetSoftKeyIcon(GetEnhancedInputKey(Action, Axis, Scale, InputRestriction));
+}
+
+TArray<TSoftObjectPtr<UTexture2D>> UUINavPCComponent::GetSoftEnhancedInputIcons(const UInputAction* Action,
+	const EInputAxis Axis, const EAxisType Scale, const EInputRestriction InputRestriction) const
+{
+	TArray<FKey> Keys = GetEnhancedInputKeysWithAxis(Action, Axis, Scale, InputRestriction);
+	TArray<TSoftObjectPtr<UTexture2D>> Textures;
+	for (const FKey& Key : Keys)
+	{
+		Textures.Add(GetSoftKeyIcon(Key));
+	}
+	return Textures;
 }
 
 FText UUINavPCComponent::GetEnhancedInputText(const UInputAction* Action, const EInputAxis Axis, const EAxisType Scale, const EInputRestriction InputRestriction) const

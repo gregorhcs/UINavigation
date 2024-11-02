@@ -110,9 +110,13 @@ void UUINavInputDisplay::UpdateInputVisuals()
 		Restriction = UINavPC->IsUsingGamepad() ? EInputRestriction::Gamepad : EInputRestriction::Keyboard_Mouse;
 	}
 
-	TSoftObjectPtr<UTexture2D> NewSoftTexture = GetDefault<UUINavSettings>()->bLoadInputIconsAsync ?
-		UINavPC->GetSoftEnhancedInputIcon(InputAction, Axis, Scale, Restriction) : UINavPC->GetEnhancedInputIcon(InputAction, Axis, Scale, Restriction);
-		
+	const TArray<TSoftObjectPtr<UTexture2D>> NewSoftTextures = GetDefault<UUINavSettings>()->bLoadInputIconsAsync
+		? UINavPC->GetSoftEnhancedInputIcons(InputAction, Axis, Scale, Restriction)
+		: UINavPC->GetEnhancedInputIcons(InputAction, Axis, Scale, Restriction);
+	if (!NewSoftTextures.IsValidIndex(MappingIndex))
+		return;
+	const TSoftObjectPtr<UTexture2D> NewSoftTexture = NewSoftTextures[MappingIndex];
+	
 	if (!NewSoftTexture.IsNull() && DisplayType != EInputDisplayType::Text)
 	{
 		InputImage->SetBrushFromSoftTexture(NewSoftTexture, bMatchIconSize);
